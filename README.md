@@ -14,6 +14,7 @@ There are total five containers are running in this application:
 -	Redis-server
 -	Redis-worker
 -	Frontend-react
+
 To run example, we must need install docker and docker compose in system. 
 Docker install steps (Linux):
 -	sudo apt-get install apt-transport-https ca-certificates curl gnupg-agent software-properties-common
