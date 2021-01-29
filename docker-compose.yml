@@ -1,0 +1,70 @@
+version: "3"
+
+services:
+  db-service:
+    image: mysql:latest
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d/
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: lemay
+      MYSQL_USER: anip
+      MYSQL_PASSWORD: anip_shah#
+    ports:
+      - "32000:3306"
+
+  frontend-service:
+    build: ./frontend
+    image: frontend
+    volumes:
+      - ./frontend:/frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - consumer-api
+
+  producer-service:
+    build: ./producer
+    image: producer
+    volumes:
+      - ./producer:/producer
+    environment:
+      CONSUMER_HOST_URL: "http://consumer-api:5000"
+      REDIS_HOST: redis-server
+      REDIS_PORT: 6379
+      QUEUE_NAME: messages
+    depends_on:
+      - redis-server
+      - consumer-api
+    command: sh -c './wait-for.sh consumer-api:5000 -- python3 main.py'
+
+  consumer-api:
+    build: ./consumer
+    volumes:
+      - ./consumer:/app
+    environment:
+      DB_NAME: lemay
+      DB_USER: anip
+      DB_PASSWORD: anip_shah#
+      DB_HOST: db-service
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db-service
+      - redis-server
+    command: sh -c './wait-for.sh db-service:3306 -- python3 -u main.py'
+
+  redis-worker:
+    image: producer
+    depends_on:
+      - redis-server
+      - producer-service
+    entrypoint: rq worker messages --url redis://redis-server:6379
+
+  redis-server:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    expose:
+      - "6379"
+    command: redis-server
